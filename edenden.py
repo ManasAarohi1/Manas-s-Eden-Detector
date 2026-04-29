@@ -181,6 +181,7 @@ class BotLogic(QObject):
         super().__init__()
         self.config = config
         self.stop_event = threading.Event()
+        self.prev_frame_small = None
 
     def log(self, text):
         self.log_signal.emit(text)
@@ -258,6 +259,15 @@ class BotLogic(QObject):
                 screen = np.array(ImageGrab.grab())
                 screen_gray = cv2.cvtColor(screen, cv2.COLOR_RGB2GRAY)
                 
+                small_gray = cv2.resize(screen_gray, (64, 64))
+                if self.prev_frame_small is not None:
+                    res = cv2.matchTemplate(small_gray, self.prev_frame_small, cv2.TM_CCOEFF_NORMED)
+                    similarity = res[0][0]
+                    if similarity >= 0.98:
+                        time.sleep(1.5)
+                        continue
+                self.prev_frame_small = small_gray
+                
                 found = None
                 for scale in np.linspace(0.5, 1.5, 20):
                     resized_t = cv2.resize(template, None, fx=scale, fy=scale)
@@ -284,7 +294,7 @@ class BotLogic(QObject):
                             time.sleep(1)
                         self.log("Resuming Scan...")
                 
-                time.sleep(0.5) 
+                time.sleep(1.5)
         except Exception as e:
             self.log(f"Scanner Error: {e}")
 
